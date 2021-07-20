@@ -1,0 +1,57 @@
+name: Auto API
+
+on: 
+  release:
+    types: [published]
+  push:
+    tags:
+    - 'v*'
+  #  branches: 
+  #    - master
+  schedule:
+    - cron: 0 */5 * * *
+  watch:
+    types: [started]
+   
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install requests
+      run: |
+        pip install requests
+    - name: read config from secrets
+      env: 
+        CONFIG_ID: ${{ secrets.CONFIG_ID }}
+        CONFIG_KEY: ${{ secrets.CONFIG_KEY }}
+      run: | 
+        cp run.py run-copy.py
+        echo $CONFIG_ID > configid.txt
+        echo $CONFIG_KEY > configkey.txt
+        sed -i '10 r configid.txt' run-copy.py
+        sed -i '12 r configkey.txt' run-copy.py
+    - name: Test API
+      run: |    
+        python run-copy.py
+        echo `date +"%Y-%m-%d %H:%M:%S"` begin > time.log
+        rm -f run-copy.py
+        rm -f configid.txt
+        rm -f configkey.txt
+    
+    - name: commit
+      run: |
+        git config --global user.email benben.miao@outlook.com
+        git config --global user.name benben-miao
+        git add .
+        git commit -m "Update new token" -a
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
